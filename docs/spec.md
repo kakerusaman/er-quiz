@@ -64,16 +64,16 @@
 
 MVPの次に作るもの: ログイン、作問画面、★評価、難易度の表示。
 
-## 7. API（現状）
+## 7. API
 
-雛形の時点のAPIです。MVPの実装に合わせて、説明文・解説文・解答群の追加や、採点結果に正解と解説を含める変更を行い、この表も更新します。
+詳細は [API設計](design/api.md) を参照。
 
 | メソッド | パス | 内容 |
 | --- | --- | --- |
 | GET | `/api/health` | 死活確認 |
-| GET | `/api/questions` | 問題一覧（id, title） |
-| GET | `/api/questions/{id}` | 問題本体（正解なし） |
-| POST | `/api/questions/{id}/answers` | `{"answers": {"b1": "email"}}` を採点して `{"correct": {...}, "score", "total"}` を返す |
+| GET | `/api/questions` | 問題一覧（新しい問題が上） |
+| GET | `/api/questions/{id}` | 問題本体（説明文、ER図、解答群。正解・解説なし） |
+| POST | `/api/questions/{id}/attempts` | 回答（空欄ID → 選択肢ID）を採点・記録し、正誤、正解、解説を返す |
 
 ## 8. 将来やりたいこと（バックログ）
 
