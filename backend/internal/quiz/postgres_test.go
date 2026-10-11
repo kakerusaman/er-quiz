@@ -84,3 +84,57 @@ func TestPostgresGetNotFound(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestPostgresSaveAttempt(t *testing.T) {
+	s := newPostgresStore(t)
+	ctx := context.Background()
+	q, err := s.Get(ctx, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	answers := map[int64]int64{1: 1, 2: 2} // ウは未回答
+	result := q.Grade(answers)
+	id, err := s.SaveAttempt(ctx, Attempt{QuestionID: 1, Answers: answers, Result: result})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id2, err := s.SaveAttempt(ctx, Attempt{QuestionID: 1, Answers: answers, Result: result})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id2 == id {
+		t.Fatalf("attempt ids are equal: %d", id)
+	}
+
+	var questionID int64
+	var score, total int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT question_id, score, total FROM attempts WHERE id = $1`, id,
+	).Scan(&questionID, &score, &total); err != nil {
+		t.Fatal(err)
+	}
+	if questionID != 1 || score != 1 || total != 3 {
+		t.Fatalf("attempt = (%d, %d, %d)", questionID, score, total)
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT blank_id, choice_id, is_correct FROM attempt_answers WHERE attempt_id = $1 ORDER BY blank_id`, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var blank int64
+		var choice sql.NullInt64
+		var correct bool
+		if err := rows.Scan(&blank, &choice, &correct); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, fmt.Sprintf("%d:%v:%v", blank, choice, correct))
+	}
+	want := []string{"1:{1 true}:true", "2:{2 true}:false", "3:{0 false}:false"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("attempt_answers = %v, want %v", got, want)
+	}
+}

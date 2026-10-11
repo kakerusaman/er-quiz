@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -33,8 +33,14 @@ const question: Question = {
 function mockFetch() {
   return vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === "POST") {
-      expect(url).toBe("/api/questions/7/answers");
-      return Response.json({ correct: { 10: true }, score: 1, total: 1 });
+      expect(url).toBe("/api/questions/7/attempts");
+      return Response.json({
+        attemptId: 1,
+        score: 1,
+        total: 1,
+        results: [{ blankId: 10, correct: true, answerChoiceId: 100 }],
+        explanation: "会員はメールアドレスを持つ。",
+      });
     }
     if (url === "/api/questions") return Response.json(summaries);
     expect(url).toBe("/api/questions/7");
@@ -55,6 +61,7 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "答え合わせ" }));
 
     expect(await screen.findByText("1 / 1 問正解")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveClass("correct"));
     const post = fetch.mock.calls.find(([, init]) => init?.method === "POST")!;
     expect(JSON.parse(post[1]!.body as string)).toEqual({ answers: { 10: 100 } });
   });

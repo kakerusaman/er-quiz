@@ -47,9 +47,18 @@ export type Summary = { id: number; title: string; blankCount: number };
 /** 空欄ID → 選択肢ID */
 export type Answers = Record<number, number>;
 
-export type GradeResult = {
-  /** 空欄ID → 正解か */
-  correct: Record<number, boolean>;
+export type BlankResult = {
+  blankId: number;
+  correct: boolean;
+  /** 正解の選択肢ID */
+  answerChoiceId: number;
+};
+
+export type AttemptResult = {
+  attemptId: number;
   score: number;
   total: number;
+  /** 空欄ID順 */
+  results: BlankResult[];
+  explanation: string;
 };

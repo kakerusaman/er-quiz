@@ -29,8 +29,7 @@ func NewHandler(s Store) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, q.Public())
 	})
-	// 採点のみ。解答結果の記録と正解・解説の返却は POST /attempts で置き換える予定。
-	mux.HandleFunc("POST /api/questions/{id}/answers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /api/questions/{id}/attempts", func(w http.ResponseWriter, r *http.Request) {
 		q, ok := getQuestion(w, r, s)
 		if !ok {
 			return
@@ -42,7 +41,18 @@ func NewHandler(s Store) http.Handler {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
 			return
 		}
-		writeJSON(w, http.StatusOK, q.Grade(body.Answers))
+		if err := q.Validate(body.Answers); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		result := q.Grade(body.Answers)
+		id, err := s.SaveAttempt(r.Context(), Attempt{QuestionID: q.ID, Answers: body.Answers, Result: result})
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		result.AttemptID = id
+		writeJSON(w, http.StatusOK, result)
 	})
 	return mux
 }

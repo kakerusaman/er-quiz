@@ -16,7 +16,7 @@
 | GET | `/api/health` | 死活確認（変更なし） |
 | GET | `/api/questions` | 問題一覧 |
 | GET | `/api/questions/{id}` | 問題本体（正解・解説なし） |
-| POST | `/api/questions/{id}/attempts` | 回答を採点し、記録して、結果を返す（今の `/answers` から名前を変更） |
+| POST | `/api/questions/{id}/attempts` | 回答を採点し、記録して、結果を返す |
 
 ## GET /api/questions
 
@@ -83,6 +83,6 @@
 }
 ```
 
-- `answerChoiceId` は正解の選択肢。画面では不正解の空欄の ✖︎ の横に、この選択肢の文字列を出す。
-- 解答結果は attempts / attempt_answers に保存する。「もう一度解く」は新しい解答として送る。
+- `answerChoiceId` は正解の選択肢。画面では不正解の空欄の下に「正解: ○○」としてこの選択肢の文字列を出す。
+- 解答結果は attempts / attempt_answers に保存する。未回答の空欄も choice_id を NULL にして記録する。「もう一度解く」は新しい解答として送る。
 - 存在しない問題は 404。この問題にない空欄 ID・選択肢 ID が含まれていたら 400。
