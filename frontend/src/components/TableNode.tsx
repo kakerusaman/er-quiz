@@ -1,13 +1,12 @@
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import type { Answers, AttemptResult, BlankRef, Choice, Entity } from "../types";
-import { BlankSelect } from "./BlankSelect";
+import { BlankSlot } from "./BlankSlot";
 
 export type TableNodeData = {
   entity: Entity;
   choices: Choice[];
   answers: Answers;
   result?: AttemptResult;
-  onAnswer: (blankId: number, choiceId: number) => void;
 };
 
 export type TableNodeType = Node<TableNodeData, "table">;
@@ -24,19 +23,23 @@ export type Side = (typeof sides)[number][0];
 
 // ER図上のエンティティ1つ。見出しと属性の行を並べ、空欄の箇所は空欄の枠を出す。
 export function TableNode({ data }: NodeProps<TableNodeType>) {
-  const { entity, choices, answers, result, onAnswer } = data;
-  const renderName = (name: string | null, blank: BlankRef | null) =>
-    blank ? (
-      <BlankSelect
+  const { entity, choices, answers, result } = data;
+  const choice = (id: number | undefined) => choices.find((c) => c.id === id);
+
+  const renderName = (name: string | null, blank: BlankRef | null) => {
+    if (!blank) return <span>{name}</span>;
+    const placed = choice(answers[blank.id]);
+    const blankResult = result?.results.find((r) => r.blankId === blank.id);
+    return (
+      <BlankSlot
         blank={blank}
-        choices={choices}
-        value={answers[blank.id]}
-        correct={result?.results.find((r) => r.blankId === blank.id)?.correct}
-        onChange={onAnswer}
+        placed={placed}
+        result={
+          blankResult && { blank: blankResult, answerLabel: choice(blankResult.answerChoiceId)?.label ?? "" }
+        }
       />
-    ) : (
-      <span>{name}</span>
     );
+  };
 
   return (
     <div className="table-node">

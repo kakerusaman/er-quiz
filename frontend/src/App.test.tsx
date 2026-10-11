@@ -37,11 +37,13 @@ function mockFetch() {
   return vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === "POST") {
       expect(url).toBe("/api/questions/7/attempts");
+      const { answers } = JSON.parse(init.body as string) as { answers: Record<string, number> };
+      const correct = answers[10] === 100;
       return Response.json({
         attemptId: 1,
-        score: 1,
+        score: correct ? 1 : 0,
         total: 1,
-        results: [{ blankId: 10, correct: true, answerChoiceId: 100 }],
+        results: [{ blankId: 10, correct, answerChoiceId: 100 }],
         explanation: "会員はメールアドレスを持つ。",
       });
     }
@@ -49,6 +51,13 @@ function mockFetch() {
     if (url === "/api/questions/7") return Response.json(question);
     return Response.json({ error: "question not found" }, { status: 404 });
   });
+}
+
+/** キーボードで選択肢をつかみ、一番近い空欄（この問題では空欄イ）に置く。 */
+async function dropChoice(label: string) {
+  screen.getByRole("button", { name: `選択肢 ${label}` }).focus();
+  await userEvent.keyboard("[Space]");
+  await userEvent.keyboard("[Space]");
 }
 
 /** matchMedia の代わり。setNarrow で画面幅の変化を起こせる。 */
@@ -91,20 +100,99 @@ describe("App", () => {
     expect(await screen.findByText("問題一覧")).toBeInTheDocument();
   });
 
-  it("問題画面で空欄を選んで答え合わせすると点数が出る", async () => {
+  it("選択肢を空欄に置いて答え合わせすると、点数・正誤・解説が出る", async () => {
     window.history.replaceState(null, "", "/questions/7");
     const fetch = mockFetch();
     vi.stubGlobal("fetch", fetch);
     render(<App />);
 
-    const select = await screen.findByLabelText("空欄 イ");
-    await userEvent.selectOptions(select, "メールアドレス");
-    await userEvent.click(screen.getByRole("button", { name: "答え合わせ" }));
+    expect(await screen.findByLabelText("空欄 イ")).toHaveTextContent("イ");
+    await dropChoice("メールアドレス");
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス"));
 
-    expect(await screen.findByText("1 / 1 問正解")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveClass("correct"));
+    await userEvent.click(screen.getByRole("button", { name: "答え合わせ" }));
+    expect(await screen.findByText("1問中 1問正解")).toBeInTheDocument();
+    expect(await screen.findByLabelText("空欄 イ: メールアドレス、正解")).toBeInTheDocument();
+    expect(screen.queryByText(/^正解:/)).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "解説" })).toHaveTextContent("会員はメールアドレスを持つ。");
+    expect(screen.queryByRole("region", { name: "解答群" })).not.toBeInTheDocument();
+
     const post = fetch.mock.calls.find(([, init]) => init?.method === "POST")!;
     expect(JSON.parse(post[1]!.body as string)).toEqual({ answers: { 10: 100 } });
+  });
+
+  it("不正解と未回答には ✕ と正解を出し、[もう一度解く] で空欄が空に戻る", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    await userEvent.click(screen.getByRole("button", { name: "答え合わせ" }));
+    expect(await screen.findByText("1問中 0問正解")).toBeInTheDocument();
+    expect(await screen.findByLabelText("空欄 イ: 未回答、不正解")).toBeInTheDocument();
+    expect(screen.getByText("正解: メールアドレス")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "もう一度解く" }));
+    expect(await screen.findByLabelText("空欄 イ")).toHaveTextContent("イ");
+    expect(screen.queryByText("1問中 0問正解")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "解答群" })).toBeInTheDocument();
+
+    // もう一度解いた結果は不正解の表示を残さない
+    await dropChoice("在庫数");
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("在庫数"));
+  });
+
+  it("空欄を埋めてから [← 一覧へ] を押すと確認を出す", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    await dropChoice("メールアドレス");
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス"));
+
+    await userEvent.click(screen.getByRole("button", { name: "← 一覧へ" }));
+    expect(confirm).toHaveBeenCalledWith("解答が消えますがよいですか？");
+    expect(window.location.pathname).toBe("/questions/7");
+
+    confirm.mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: "← 一覧へ" }));
+    expect(window.location.pathname).toBe("/");
+  });
+
+  it("答え合わせ後の [一覧へ戻る] は確認を出さない", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    await dropChoice("メールアドレス");
+    await userEvent.click(screen.getByRole("button", { name: "答え合わせ" }));
+    await userEvent.click(await screen.findByRole("button", { name: "一覧へ戻る" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/");
+  });
+
+  it("答え合わせの送信に失敗したら、解答を残して知らせる", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    const ok = mockFetch();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) =>
+        init?.method === "POST" ? new Response(null, { status: 500 }) : ok(url, init),
+      ),
+    );
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    await dropChoice("メールアドレス");
+    await userEvent.click(screen.getByRole("button", { name: "答え合わせ" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("送信に失敗しました。もう一度お試しください");
+    expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス");
   });
 
   it("問題が0件なら知らせる", async () => {
@@ -168,7 +256,9 @@ describe("App", () => {
     const setNarrow = mockMatchMedia(false);
     render(<App />);
 
-    await userEvent.selectOptions(await screen.findByLabelText("空欄 イ"), "メールアドレス");
+    await screen.findByLabelText("空欄 イ");
+    await dropChoice("メールアドレス");
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス"));
 
     setNarrow(true);
     expect(screen.getByText("PCで開いてください")).toBeVisible();
@@ -176,6 +266,6 @@ describe("App", () => {
 
     setNarrow(false);
     expect(screen.queryByText("PCで開いてください")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("空欄 イ")).toHaveValue("100");
+    expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス");
   });
 });
