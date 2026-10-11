@@ -5,6 +5,13 @@
   --text: #1b2430;
   --sub-text: #5b6573;
   --primary: #2f4fd8;
+  --chip-border: #d5d9e1;
+  --entity-head: #e6ebf3;
+  --correct: #238260;
+  --correct-bg: #e3f4ec;
+  --wrong: #b3261e;
+  --wrong-bg: #fbe9e7;
+  --wrong-border: #d98d88;
 }
 body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
 [hidden] { display: none !important; }
@@ -34,15 +41,44 @@ button.link { background: none; border: none; padding: 0; color: var(--primary);
 
 .narrow-notice { display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-weight: bold; font-size: 20px; }
 
-/* 問題画面（ステップ4で作り直す） */
-.question-page { display: flex; flex-direction: column; height: calc(100vh - 65px); }
-.toolbar { display: flex; align-items: center; gap: 16px; padding: 12px 0; }
-.diagram { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 24px; }
-.table-node { background: #fff; border: 1px solid #555; border-radius: 4px; min-width: 200px; font-size: 13px; }
-.table-name { background: #334; color: #fff; padding: 4px 8px; font-weight: bold; }
-.table-node ul { list-style: none; margin: 0; padding: 4px 8px; }
-.table-node li { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
-.key { width: 20px; color: #a60; font-size: 11px; }
-.blank.correct { background: #d4f7d4; }
-.blank.wrong { background: #f7d4d4; }
+/* 問題画面 */
+.question-page { display: flex; flex-direction: column; gap: 16px; padding-top: 24px; padding-bottom: 48px; }
+.scenario { padding: 16px 20px; }
+.scenario-head { display: flex; align-items: center; justify-content: space-between; }
+.scenario-title { background: none; border: none; padding: 0; font-weight: bold; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.caret { font-size: 10px; }
+.scenario-body { margin: 12px 0 0; line-height: 1.9; font-size: 15px; max-height: 12em; overflow-y: auto; }
+button.link.small { font-size: 13px; }
+
+.diagram { height: 520px; overflow: hidden; }
+/* 線の端がエンティティの枠にぴったり付くよう、ハンドルは大きさ0にして隠す。左右の線は見出しの高さから出す。 */
+.react-flow__handle { width: 0; height: 0; min-width: 0; min-height: 0; border: 0; opacity: 0; pointer-events: none; }
+.react-flow__handle-left, .react-flow__handle-right { top: 23px; }
+.er-edge { stroke: var(--text) !important; stroke-width: 1.5 !important; }
+.cardinality-mark line, .cardinality-mark circle { stroke: var(--text); stroke-width: 1.5; fill: #fff; }
+.zoom-buttons { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #fff; }
+.zoom-buttons button { width: 28px; height: 28px; border: none; background: #fff; color: var(--text); font-size: 14px; }
+.zoom-buttons button + button { border-top: 1px solid var(--border); }
+
+.table-node { background: #fff; border: 1.5px solid var(--text); border-radius: 2px; width: 200px; font-size: 14px; }
+.table-name { background: var(--entity-head); padding: 0 12px; height: 46px; box-sizing: border-box; font-weight: bold; display: flex; justify-content: center; align-items: center; }
+.table-node ul { list-style: none; margin: 0; padding: 0; }
+.table-node li { display: flex; gap: 8px; align-items: center; padding: 0 12px; height: 38px; border-top: 1px solid var(--border); }
+.key-badge { border: 1px solid var(--chip-border); border-radius: 3px; padding: 0 4px; font-size: 10px; font-weight: bold; color: var(--sub-text); line-height: 16px; }
+
+.blank { appearance: none; font: inherit; font-weight: bold; text-align: center; text-align-last: center; min-width: 64px; height: 30px; padding: 0 10px; border-radius: 5px; cursor: pointer; }
+.blank.empty { border: 1.5px dashed #9aa3b2; background: var(--bg); color: var(--primary); }
+.blank.filled { border: 1.5px solid var(--chip-border); background: #fff; color: var(--text); }
+.blank.correct { background: var(--correct-bg); border-color: var(--correct); color: var(--correct); }
+.blank.wrong { background: var(--wrong-bg); border-color: var(--wrong-border); color: var(--wrong); }
+
+.choices { padding: 20px 24px; }
+.choices-head { display: flex; align-items: baseline; gap: 12px; }
+.choices-head h2 { font-size: 16px; margin: 0; }
+.hint { font-size: 13px; color: var(--sub-text); }
+.choice-list { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; padding: 0; }
+.choice-chip { border: 1.5px solid var(--chip-border); border-radius: 6px; padding: 10px 18px; font-weight: bold; background: #fff; }
+.choices-actions { display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 16px; }
+.choices-actions button.primary { padding: 12px 32px; font-size: 16px; }
 .score { font-weight: bold; }
+.error-text { color: var(--wrong); }

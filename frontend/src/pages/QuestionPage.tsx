@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchQuestion, submitAnswers } from "../api";
+import { ChoicePanel } from "../components/ChoicePanel";
 import { ErDiagram } from "../components/ErDiagram";
 import { Header } from "../components/Header";
 import { LoadError } from "../components/LoadError";
+import { ScenarioPanel } from "../components/ScenarioPanel";
 import { navigate } from "../router";
 import type { Answers, AttemptResult, Question } from "../types";
 
-// 問題画面（/questions/{id}）。見た目と答え合わせ後の表示はステップ4・5で作る。
+// 問題画面（/questions/{id}）。上から業務の説明文、ER図、解答群。答え合わせ後の表示はステップ5で作る。
 export function QuestionPage({ id }: { id: number }) {
   const [question, setQuestion] = useState<Question>();
   const [failed, setFailed] = useState(false);
@@ -56,18 +58,23 @@ export function QuestionPage({ id }: { id: number }) {
         </main>
       ) : (
         <main className="container question-page">
-          <div className="toolbar">
-            <button className="primary" onClick={onSubmit}>
-              答え合わせ
-            </button>
+          <ScenarioPanel scenario={question.scenario} />
+          <ErDiagram question={question} answers={answers} result={result} onAnswer={onAnswer} />
+          <ChoicePanel choices={question.choices}>
+            {submitError && (
+              <span className="error-text" role="alert">
+                送信に失敗しました。もう一度お試しください
+              </span>
+            )}
             {result && (
               <span className="score">
                 {result.score} / {result.total} 問正解
               </span>
             )}
-            {submitError && <span role="alert">送信に失敗しました。もう一度お試しください</span>}
-          </div>
-          <ErDiagram question={question} answers={answers} result={result} onAnswer={onAnswer} />
+            <button className="primary" onClick={onSubmit}>
+              答え合わせ
+            </button>
+          </ChoicePanel>
         </main>
       )}
     </>

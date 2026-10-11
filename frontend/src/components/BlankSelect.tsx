@@ -8,13 +8,13 @@ type Props = {
   onChange: (blankId: number, choiceId: number) => void;
 };
 
-// 空欄1つ分の選択肢。採点後は正誤で色が変わる。
-// ドラッグ＆ドロップに置き換えるまでの仮の部品。
+// 空欄の枠。破線の枠に記号（ア、イ…）を出し、選んだ選択肢を置くとその文字列に変わる。
+// ステップ5でドラッグ＆ドロップに置き換えるまでは、枠の中のプルダウンで選ぶ。
 export function BlankSelect({ blank, choices, value, correct, onChange }: Props) {
   const state = correct === undefined ? "" : correct ? "correct" : "wrong";
   return (
     <select
-      className={`nodrag blank ${state}`}
+      className={`nodrag blank ${value === undefined ? "empty" : "filled"} ${state}`}
       aria-label={`空欄 ${blank.symbol}`}
       value={value ?? ""}
       onChange={(e) => onChange(blank.id, Number(e.target.value))}
