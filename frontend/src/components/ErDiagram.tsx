@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Background, Controls, ReactFlow, useNodesState, type Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { Answers, GradeResult, Question } from "../types";
+import type { Answers, AttemptResult, Question } from "../types";
 import { TableNode, type TableNodeType } from "./TableNode";
 
 const nodeTypes = { table: TableNode };
@@ -9,7 +9,7 @@ const nodeTypes = { table: TableNode };
 type Props = {
   question: Question;
   answers: Answers;
-  result?: GradeResult;
+  result?: AttemptResult;
   onAnswer: (blankId: number, choiceId: number) => void;
 };
 

@@ -1,12 +1,12 @@
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import type { Answers, BlankRef, Choice, Entity, GradeResult } from "../types";
+import type { Answers, BlankRef, Choice, Entity, AttemptResult } from "../types";
 import { BlankSelect } from "./BlankSelect";
 
 export type TableNodeData = {
   entity: Entity;
   choices: Choice[];
   answers: Answers;
-  result?: GradeResult;
+  result?: AttemptResult;
   onAnswer: (blankId: number, choiceId: number) => void;
 };
 
@@ -21,7 +21,7 @@ export function TableNode({ data }: NodeProps<TableNodeType>) {
         blank={blank}
         choices={choices}
         value={answers[blank.id]}
-        correct={result?.correct[blank.id]}
+        correct={result?.results.find((r) => r.blankId === blank.id)?.correct}
         onChange={onAnswer}
       />
     ) : (

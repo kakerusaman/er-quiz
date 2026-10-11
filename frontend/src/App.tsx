@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchQuestion, fetchQuestions, submitAnswers } from "./api";
 import { ErDiagram } from "./components/ErDiagram";
-import type { Answers, GradeResult, Question } from "./types";
+import type { Answers, AttemptResult, Question } from "./types";
 
 export function App() {
   const [question, setQuestion] = useState<Question>();
   const [answers, setAnswers] = useState<Answers>({});
-  const [result, setResult] = useState<GradeResult>();
+  const [result, setResult] = useState<AttemptResult>();
   const [error, setError] = useState<string>();
 
   // 問題一覧画面ができるまでは、一覧の先頭の問題を表示する。

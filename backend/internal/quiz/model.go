@@ -1,6 +1,12 @@
 // Package quiz はER図の穴埋め問題のモデル・保存・採点を扱う。
 package quiz
 
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
 // BlankRef は空欄の識別子と記号（ア、イ…）。正解は含まない。
 type BlankRef struct {
 	ID     int64  `json:"id"`
@@ -101,23 +107,54 @@ func (d QuestionData) Summary() Summary {
 	return Summary{ID: d.ID, Title: d.Title, BlankCount: len(d.Answers)}
 }
 
-// Result は採点結果。Correct のキーは空欄ID。
+// ErrInvalidAnswer は回答にこの問題にない空欄ID・選択肢IDが含まれるときに返す。
+var ErrInvalidAnswer = errors.New("invalid answer")
+
+// BlankResult は空欄1つ分の採点結果。AnswerChoiceID は正解の選択肢。
+type BlankResult struct {
+	BlankID        int64 `json:"blankId"`
+	Correct        bool  `json:"correct"`
+	AnswerChoiceID int64 `json:"answerChoiceId"`
+}
+
+// Result は解答1回分の採点結果。Results は空欄ID順。
 type Result struct {
-	Correct map[int64]bool `json:"correct"`
-	Score   int            `json:"score"`
-	Total   int            `json:"total"`
+	AttemptID   int64         `json:"attemptId"`
+	Score       int           `json:"score"`
+	Total       int           `json:"total"`
+	Results     []BlankResult `json:"results"`
+	Explanation string        `json:"explanation"`
+}
+
+// Validate は回答の空欄ID・選択肢IDがすべてこの問題のものか確かめる。
+func (d QuestionData) Validate(answers map[int64]int64) error {
+	choices := make(map[int64]bool, len(d.Choices))
+	for _, c := range d.Choices {
+		choices[c.ID] = true
+	}
+	for blankID, choiceID := range answers {
+		if _, ok := d.Answers[blankID]; !ok {
+			return fmt.Errorf("%w: blank %d is not in question %d", ErrInvalidAnswer, blankID, d.ID)
+		}
+		if !choices[choiceID] {
+			return fmt.Errorf("%w: choice %d is not in question %d", ErrInvalidAnswer, choiceID, d.ID)
+		}
+	}
+	return nil
 }
 
 // Grade は空欄ID → 選択肢ID の回答を採点する。未回答は不正解として扱う。
+// AttemptID は保存したあとに呼び出し側が入れる。
 func (d QuestionData) Grade(answers map[int64]int64) Result {
-	r := Result{Correct: make(map[int64]bool, len(d.Answers)), Total: len(d.Answers)}
+	r := Result{Total: len(d.Answers), Results: make([]BlankResult, 0, len(d.Answers)), Explanation: d.Explanation}
 	for blankID, want := range d.Answers {
 		got, ok := answers[blankID]
 		correct := ok && got == want
-		r.Correct[blankID] = correct
+		r.Results = append(r.Results, BlankResult{BlankID: blankID, Correct: correct, AnswerChoiceID: want})
 		if correct {
 			r.Score++
 		}
 	}
+	sort.Slice(r.Results, func(i, j int) bool { return r.Results[i].BlankID < r.Results[j].BlankID })
 	return r
 }

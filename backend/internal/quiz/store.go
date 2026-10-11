@@ -3,6 +3,7 @@ package quiz
 import (
 	"context"
 	"errors"
+	"sync"
 )
 
 // ErrNotFound は問題が見つからないときに返す。
@@ -14,11 +15,23 @@ type Store interface {
 	List(ctx context.Context) ([]Summary, error)
 	// Get は正解と解説を含む問題全体を返す。見つからなければ ErrNotFound。
 	Get(ctx context.Context, id int64) (QuestionData, error)
+	// SaveAttempt は解答1回分（送られた回答と採点結果）を保存し、解答IDを返す。
+	SaveAttempt(ctx context.Context, a Attempt) (int64, error)
+}
+
+// Attempt は保存する解答1回分。Answers は空欄ID → 置いた選択肢ID（未回答の空欄はない）。
+type Attempt struct {
+	QuestionID int64
+	Answers    map[int64]int64
+	Result     Result
 }
 
 // MemoryStore はメモリ上に問題を持つ Store。後から渡した問題ほど新しいとみなす。
 type MemoryStore struct {
 	questions []QuestionData
+
+	mu       sync.Mutex
+	attempts []Attempt
 }
 
 // NewMemoryStore は与えた問題で MemoryStore を作る。
@@ -41,4 +54,18 @@ func (s *MemoryStore) Get(_ context.Context, id int64) (QuestionData, error) {
 		}
 	}
 	return QuestionData{}, ErrNotFound
+}
+
+func (s *MemoryStore) SaveAttempt(_ context.Context, a Attempt) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.attempts = append(s.attempts, a)
+	return int64(len(s.attempts)), nil
+}
+
+// Attempts は保存された解答を古い順に返す（テスト用）。
+func (s *MemoryStore) Attempts() []Attempt {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]Attempt(nil), s.attempts...)
 }

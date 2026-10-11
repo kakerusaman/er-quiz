@@ -154,6 +154,42 @@ func (s *PostgresStore) Get(ctx context.Context, id int64) (QuestionData, error)
 	return d, nil
 }
 
+func (s *PostgresStore) SaveAttempt(ctx context.Context, a Attempt) (id int64, err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("save attempt: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback() //nolint:errcheck // 元のエラーを返す
+		}
+	}()
+
+	if err := tx.QueryRowContext(ctx,
+		`INSERT INTO attempts (question_id, score, total) VALUES ($1, $2, $3) RETURNING id`,
+		a.QuestionID, a.Result.Score, a.Result.Total,
+	).Scan(&id); err != nil {
+		return 0, fmt.Errorf("save attempt: %w", err)
+	}
+	// 未回答の空欄も choice_id を NULL にして1行ずつ残す。
+	for _, r := range a.Result.Results {
+		var choice sql.NullInt64
+		if c, ok := a.Answers[r.BlankID]; ok {
+			choice = sql.NullInt64{Int64: c, Valid: true}
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO attempt_answers (attempt_id, blank_id, choice_id, is_correct) VALUES ($1, $2, $3, $4)`,
+			id, r.BlankID, choice, r.Correct,
+		); err != nil {
+			return 0, fmt.Errorf("save attempt answer: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("save attempt: %w", err)
+	}
+	return id, nil
+}
+
 // eachRow は query の結果の各行に fn を呼ぶ。
 func eachRow(ctx context.Context, tx *sql.Tx, query string, args []any, fn func(*sql.Rows) error) error {
 	rows, err := tx.QueryContext(ctx, query, args...)
