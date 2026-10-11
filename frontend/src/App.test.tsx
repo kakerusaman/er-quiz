@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -114,6 +114,28 @@ describe("App", () => {
     );
     render(<App />);
     expect(await screen.findByText("問題がまだありません")).toBeInTheDocument();
+  });
+
+  it("問題画面に説明文・解答群・拡大縮小ボタンを出し、説明文はたためる", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    render(<App />);
+
+    const scenario = await screen.findByText("会員が商品を注文する。");
+    expect(scenario).toBeVisible();
+    const title = screen.getByRole("button", { name: /業務の説明文/ });
+    expect(title).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: "小さくする" }));
+    expect(scenario).not.toBeVisible();
+    expect(title).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(screen.getByRole("button", { name: "広げる" }));
+    expect(scenario).toBeVisible();
+
+    const choices = within(screen.getByRole("region", { name: "解答群" })).getAllByRole("listitem");
+    expect(choices.map((c) => c.textContent)).toEqual(["メールアドレス", "在庫数"]);
+    expect(screen.getByRole("button", { name: "拡大" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "縮小" })).toBeInTheDocument();
   });
 
   it("一覧の取得に失敗したら [再読み込み] でやり直せる", async () => {
