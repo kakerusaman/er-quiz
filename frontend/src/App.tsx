@@ -1,53 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
-import { fetchQuestion, fetchQuestions, submitAnswers } from "./api";
-import { ErDiagram } from "./components/ErDiagram";
-import type { Answers, AttemptResult, Question } from "./types";
+import { LoadError } from "./components/LoadError";
+import { QuestionList } from "./pages/QuestionList";
+import { QuestionPage } from "./pages/QuestionPage";
+import { navigate, questionIdFromPath, usePath } from "./router";
+import { useIsNarrow } from "./useIsNarrow";
 
 export function App() {
-  const [question, setQuestion] = useState<Question>();
-  const [answers, setAnswers] = useState<Answers>({});
-  const [result, setResult] = useState<AttemptResult>();
-  const [error, setError] = useState<string>();
+  const path = usePath();
+  const narrow = useIsNarrow();
+  const id = questionIdFromPath(path);
 
-  // 問題一覧画面ができるまでは、一覧の先頭の問題を表示する。
-  useEffect(() => {
-    fetchQuestions()
-      .then((list) => {
-        if (list.length === 0) throw new Error("問題がまだありません");
-        return fetchQuestion(list[0].id);
-      })
-      .then(setQuestion, (e: Error) => setError(e.message));
-  }, []);
+  const page =
+    path === "/" ? (
+      <QuestionList />
+    ) : id !== undefined ? (
+      <QuestionPage key={id} id={id} />
+    ) : (
+      <LoadError actionLabel="一覧へ戻る" onAction={() => navigate("/")} />
+    );
 
-  const onAnswer = useCallback((blankId: number, choiceId: number) => {
-    setAnswers((prev) => ({ ...prev, [blankId]: choiceId }));
-    setResult(undefined);
-  }, []);
-
-  const onSubmit = async () => {
-    try {
-      if (!question) return;
-      setResult(await submitAnswers(question.id, answers));
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-
-  if (error) return <p role="alert">読み込みに失敗しました: {error}</p>;
-  if (!question) return <p>読み込み中…</p>;
-
+  // 狭い画面では案内だけを見せる。画面は隠すだけで残すので、幅を戻すと解答中の状態に戻る。
   return (
-    <main>
-      <header>
-        <h1>{question.title}</h1>
-        <button onClick={onSubmit}>答え合わせ</button>
-        {result && (
-          <span className="score">
-            {result.score} / {result.total} 問正解
-          </span>
-        )}
-      </header>
-      <ErDiagram question={question} answers={answers} result={result} onAnswer={onAnswer} />
-    </main>
+    <>
+      {narrow && <p className="narrow-notice">PCで開いてください</p>}
+      <div className="app" hidden={narrow}>
+        {page}
+      </div>
+    </>
   );
 }
