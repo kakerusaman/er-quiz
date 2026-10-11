@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchQuestion, submitAnswers } from "./api";
+import { fetchQuestion, fetchQuestions, submitAnswers } from "./api";
 import { ErDiagram } from "./components/ErDiagram";
 import type { Answers, GradeResult, Question } from "./types";
-
-const QUESTION_ID = "shop";
 
 export function App() {
   const [question, setQuestion] = useState<Question>();
@@ -11,18 +9,25 @@ export function App() {
   const [result, setResult] = useState<GradeResult>();
   const [error, setError] = useState<string>();
 
+  // 問題一覧画面ができるまでは、一覧の先頭の問題を表示する。
   useEffect(() => {
-    fetchQuestion(QUESTION_ID).then(setQuestion, (e: Error) => setError(e.message));
+    fetchQuestions()
+      .then((list) => {
+        if (list.length === 0) throw new Error("問題がまだありません");
+        return fetchQuestion(list[0].id);
+      })
+      .then(setQuestion, (e: Error) => setError(e.message));
   }, []);
 
-  const onAnswer = useCallback((blankId: string, value: string) => {
-    setAnswers((prev) => ({ ...prev, [blankId]: value }));
+  const onAnswer = useCallback((blankId: number, choiceId: number) => {
+    setAnswers((prev) => ({ ...prev, [blankId]: choiceId }));
     setResult(undefined);
   }, []);
 
   const onSubmit = async () => {
     try {
-      setResult(await submitAnswers(QUESTION_ID, answers));
+      if (!question) return;
+      setResult(await submitAnswers(question.id, answers));
     } catch (e) {
       setError((e as Error).message);
     }

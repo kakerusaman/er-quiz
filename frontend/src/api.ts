@@ -1,4 +1,4 @@
-import type { Answers, GradeResult, Question } from "./types";
+import type { Answers, GradeResult, Question, Summary } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -6,11 +6,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function fetchQuestion(id: string): Promise<Question> {
+export function fetchQuestions(): Promise<Summary[]> {
+  return request("/api/questions");
+}
+
+export function fetchQuestion(id: number): Promise<Question> {
   return request(`/api/questions/${id}`);
 }
 
-export function submitAnswers(id: string, answers: Answers): Promise<GradeResult> {
+export function submitAnswers(id: number, answers: Answers): Promise<GradeResult> {
   return request(`/api/questions/${id}/answers`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
