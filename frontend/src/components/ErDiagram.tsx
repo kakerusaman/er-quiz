@@ -12,7 +12,6 @@ type Props = {
   question: Question;
   answers: Answers;
   result?: AttemptResult;
-  onAnswer: (blankId: number, choiceId: number) => void;
 };
 
 /**
@@ -43,7 +42,7 @@ function ZoomButtons() {
 
 // 問題を React Flow のノードとエッジに変換して表示する。
 // エンティティの配置は固定で、図全体の拡大・縮小と移動だけができる。
-export function ErDiagram({ question, answers, result, onAnswer }: Props) {
+export function ErDiagram({ question, answers, result }: Props) {
   const [nodes, setNodes] = useNodesState<TableNodeType>([]);
 
   // 問題が変わったらノードを作り直す。
@@ -53,15 +52,15 @@ export function ErDiagram({ question, answers, result, onAnswer }: Props) {
         id: String(entity.id),
         type: "table",
         position: { x: entity.x, y: entity.y },
-        data: { entity, choices: question.choices, answers: {}, onAnswer },
+        data: { entity, choices: question.choices, answers: {} },
       })),
     );
   }, [question, setNodes]);
 
   // 回答や採点結果が変わったら、計測済みのサイズは保ったまま data だけ差し替える。
   useEffect(() => {
-    setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, answers, result, onAnswer } })));
-  }, [answers, result, onAnswer, setNodes]);
+    setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, answers, result } })));
+  }, [answers, result, setNodes]);
 
   const edges: ErEdgeType[] = useMemo(() => {
     const byId = new Map(question.entities.map((e) => [e.id, e]));

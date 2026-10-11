@@ -63,22 +63,40 @@ button.link.small { font-size: 13px; }
 .table-node { background: #fff; border: 1.5px solid var(--text); border-radius: 2px; width: 200px; font-size: 14px; }
 .table-name { background: var(--entity-head); padding: 0 12px; height: 46px; box-sizing: border-box; font-weight: bold; display: flex; justify-content: center; align-items: center; }
 .table-node ul { list-style: none; margin: 0; padding: 0; }
-.table-node li { display: flex; gap: 8px; align-items: center; padding: 0 12px; height: 38px; border-top: 1px solid var(--border); }
+.table-node li { display: flex; gap: 8px; align-items: center; padding: 4px 12px; min-height: 38px; box-sizing: border-box; border-top: 1px solid var(--border); }
 .key-badge { border: 1px solid var(--chip-border); border-radius: 3px; padding: 0 4px; font-size: 10px; font-weight: bold; color: var(--sub-text); line-height: 16px; }
 
-.blank { appearance: none; font: inherit; font-weight: bold; text-align: center; text-align-last: center; min-width: 64px; height: 30px; padding: 0 10px; border-radius: 5px; cursor: pointer; }
-.blank.empty { border: 1.5px dashed #9aa3b2; background: var(--bg); color: var(--primary); }
+.blank { display: inline-flex; align-items: center; justify-content: center; font-weight: bold; min-width: 64px; height: 30px; padding: 0 12px; border-radius: 5px; box-sizing: border-box; cursor: grab; user-select: none; touch-action: none; }
+/* 動かせないノードは React Flow がマウス操作を受け付けなくするので、空欄だけ受け付ける。 */
+.react-flow__node .blank { pointer-events: all; }
+.blank.empty { border: 1.5px dashed #9aa3b2; background: var(--bg); color: var(--primary); cursor: default; }
 .blank.filled { border: 1.5px solid var(--chip-border); background: #fff; color: var(--text); }
-.blank.correct { background: var(--correct-bg); border-color: var(--correct); color: var(--correct); }
-.blank.wrong { background: var(--wrong-bg); border-color: var(--wrong-border); color: var(--wrong); }
+.blank.over { border-color: var(--primary); background: #e8edfc; }
+.blank.dragging { opacity: 0.4; }
+
+.blank-result { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.blank-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 48px; height: 28px; padding: 0 8px 0 10px; border: 1.5px solid; border-radius: 5px; font-weight: bold; box-sizing: border-box; }
+.blank-chip.correct { background: var(--correct-bg); border-color: var(--correct); color: var(--correct); }
+.blank-chip.wrong { background: var(--wrong-bg); border-color: var(--wrong-border); color: var(--text); }
+.result-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; color: #fff; font-size: 10px; margin-left: auto; }
+.blank-chip.correct .result-icon { background: var(--correct); }
+.blank-chip.wrong .result-icon { background: var(--wrong); }
+.correct-answer { color: var(--wrong); font-size: 11px; }
 
 .choices { padding: 20px 24px; }
 .choices-head { display: flex; align-items: baseline; gap: 12px; }
 .choices-head h2 { font-size: 16px; margin: 0; }
 .hint { font-size: 13px; color: var(--sub-text); }
 .choice-list { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; padding: 0; }
-.choice-chip { border: 1.5px solid var(--chip-border); border-radius: 6px; padding: 10px 18px; font-weight: bold; background: #fff; }
+.choice-chip { display: inline-block; border: 1.5px solid var(--chip-border); border-radius: 6px; padding: 10px 18px; font-weight: bold; background: #fff; cursor: grab; user-select: none; touch-action: none; }
+.choice-chip.dragging { opacity: 0.4; }
+.choice-chip.overlay { cursor: grabbing; box-shadow: 0 4px 12px rgb(27 36 48 / 0.18); }
 .choices-actions { display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 16px; }
-.choices-actions button.primary { padding: 12px 32px; font-size: 16px; }
-.score { font-weight: bold; }
+.choices-actions button { padding: 12px 28px; font-size: 16px; }
+.score-card { padding: 18px 24px; }
+.score-card .score { margin: 0; font-size: 22px; font-weight: bold; }
+.explanation { padding: 20px 24px; }
+.explanation h2 { font-size: 16px; margin: 0; }
+.explanation p { margin: 12px 0 0; line-height: 1.9; font-size: 15px; }
+button.secondary { background: #fff; color: var(--primary); font-weight: bold; border: 1.5px solid var(--primary); border-radius: 6px; padding: 10px 24px; }
 .error-text { color: var(--wrong); }
