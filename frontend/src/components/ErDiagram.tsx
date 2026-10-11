@@ -10,28 +10,24 @@ type Props = {
   question: Question;
   answers: Answers;
   result?: GradeResult;
-  onAnswer: (blankId: string, value: string) => void;
+  onAnswer: (blankId: number, choiceId: number) => void;
 };
 
 // 問題をReact Flowのノードとエッジに変換して表示する。テーブルはドラッグで動かせる。
 export function ErDiagram({ question, answers, result, onAnswer }: Props) {
-  const blanks = useMemo(
-    () => Object.fromEntries(question.blanks.map((b) => [b.id, b])),
-    [question],
-  );
   const [nodes, setNodes, onNodesChange] = useNodesState<TableNodeType>([]);
 
   // 問題が変わったら初期位置でノードを作り直す。
   useEffect(() => {
     setNodes(
-      question.tables.map((table) => ({
-        id: table.id,
+      question.entities.map((entity) => ({
+        id: String(entity.id),
         type: "table",
-        position: { x: table.x, y: table.y },
-        data: { table, blanks, answers: {}, onAnswer },
+        position: { x: entity.x, y: entity.y },
+        data: { entity, choices: question.choices, answers: {}, onAnswer },
       })),
     );
-  }, [question, blanks, setNodes]);
+  }, [question, setNodes]);
 
   // 回答や採点結果が変わったら、位置やサイズは保ったまま data だけ差し替える。
   useEffect(() => {
@@ -40,11 +36,12 @@ export function ErDiagram({ question, answers, result, onAnswer }: Props) {
 
   const edges: Edge[] = useMemo(
     () =>
-      question.relations.map((r) => ({
-        id: r.id,
-        source: r.from,
-        target: r.to,
-        label: r.cardinality,
+      question.relationships.map((r) => ({
+        id: String(r.id),
+        source: String(r.fromEntityId),
+        target: String(r.toEntityId),
+        // IE記法の線はステップ4で描く。それまでは多重度を文字で出す。
+        label: `${r.fromCardinality} : ${r.toCardinality}`,
       })),
     [question],
   );

@@ -2,30 +2,42 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
-import type { Question } from "./types";
+import type { Question, Summary } from "./types";
+
+const summaries: Summary[] = [{ id: 7, title: "ECサイトの注文", blankCount: 1 }];
 
 const question: Question = {
-  id: "shop",
+  id: 7,
   title: "ECサイトの注文",
-  tables: [
+  scenario: "会員が商品を注文する。",
+  entities: [
     {
-      id: "users",
-      name: "users",
+      id: 1,
+      name: "会員",
       x: 0,
       y: 0,
-      columns: [{ id: "users.email", type: "varchar", pk: false, fk: false, blankId: "b1" }],
+      blank: null,
+      attributes: [
+        { id: 1, name: "会員番号", isPk: true, isFk: false, blank: null },
+        { id: 2, name: null, isPk: false, isFk: false, blank: { id: 10, symbol: "イ" } },
+      ],
     },
   ],
-  relations: [],
-  blanks: [{ id: "b1", choices: ["email", "price"] }],
+  relationships: [],
+  choices: [
+    { id: 100, label: "メールアドレス" },
+    { id: 101, label: "在庫数" },
+  ],
 };
 
 function mockFetch() {
   return vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === "POST") {
-      return Response.json({ correct: { b1: true }, score: 1, total: 1 });
+      expect(url).toBe("/api/questions/7/answers");
+      return Response.json({ correct: { 10: true }, score: 1, total: 1 });
     }
-    expect(url).toBe("/api/questions/shop");
+    if (url === "/api/questions") return Response.json(summaries);
+    expect(url).toBe("/api/questions/7");
     return Response.json(question);
   });
 }
@@ -38,12 +50,21 @@ describe("App", () => {
     vi.stubGlobal("fetch", fetch);
     render(<App />);
 
-    const select = await screen.findByLabelText("空欄 b1");
-    await userEvent.selectOptions(select, "email");
+    const select = await screen.findByLabelText("空欄 イ");
+    await userEvent.selectOptions(select, "メールアドレス");
     await userEvent.click(screen.getByRole("button", { name: "答え合わせ" }));
 
     expect(await screen.findByText("1 / 1 問正解")).toBeInTheDocument();
-    const body = JSON.parse(fetch.mock.calls[1][1]!.body as string);
-    expect(body).toEqual({ answers: { b1: "email" } });
+    const post = fetch.mock.calls.find(([, init]) => init?.method === "POST")!;
+    expect(JSON.parse(post[1]!.body as string)).toEqual({ answers: { 10: 100 } });
+  });
+
+  it("問題が0件なら知らせる", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json([])),
+    );
+    render(<App />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("問題がまだありません");
   });
 });

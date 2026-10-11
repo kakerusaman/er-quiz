@@ -1,26 +1,27 @@
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import type { Answers, Blank, GradeResult, Table } from "../types";
+import type { Answers, BlankRef, Choice, Entity, GradeResult } from "../types";
 import { BlankSelect } from "./BlankSelect";
 
 export type TableNodeData = {
-  table: Table;
-  blanks: Record<string, Blank>;
+  entity: Entity;
+  choices: Choice[];
   answers: Answers;
   result?: GradeResult;
-  onAnswer: (blankId: string, value: string) => void;
+  onAnswer: (blankId: number, choiceId: number) => void;
 };
 
 export type TableNodeType = Node<TableNodeData, "table">;
 
-// ER図上のテーブル1つ。名前が空欄の箇所は選択肢で表示する。
+// ER図上のエンティティ1つ。名前が空欄の箇所は選択肢で表示する。
 export function TableNode({ data }: NodeProps<TableNodeType>) {
-  const { table, blanks, answers, result, onAnswer } = data;
-  const renderName = (name: string | undefined, blankId: string | undefined) =>
-    blankId && blanks[blankId] ? (
+  const { entity, choices, answers, result, onAnswer } = data;
+  const renderName = (name: string | null, blank: BlankRef | null) =>
+    blank ? (
       <BlankSelect
-        blank={blanks[blankId]}
-        value={answers[blankId] ?? ""}
-        correct={result?.correct[blankId]}
+        blank={blank}
+        choices={choices}
+        value={answers[blank.id]}
+        correct={result?.correct[blank.id]}
         onChange={onAnswer}
       />
     ) : (
@@ -30,13 +31,12 @@ export function TableNode({ data }: NodeProps<TableNodeType>) {
   return (
     <div className="table-node">
       <Handle type="target" position={Position.Left} />
-      <div className="table-name">{renderName(table.name, table.blankId)}</div>
+      <div className="table-name">{renderName(entity.name, entity.blank)}</div>
       <ul>
-        {table.columns.map((c) => (
-          <li key={c.id}>
-            <span className="key">{c.pk ? "PK" : c.fk ? "FK" : ""}</span>
-            {renderName(c.name, c.blankId)}
-            <span className="type">{c.type}</span>
+        {entity.attributes.map((a) => (
+          <li key={a.id}>
+            <span className="key">{[a.isPk && "PK", a.isFk && "FK"].filter(Boolean).join("/")}</span>
+            {renderName(a.name, a.blank)}
           </li>
         ))}
       </ul>
