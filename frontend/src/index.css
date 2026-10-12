@@ -66,12 +66,13 @@ button.link.small { font-size: 13px; }
 .table-node li { display: flex; gap: 8px; align-items: center; padding: 4px 12px; min-height: 38px; box-sizing: border-box; border-top: 1px solid var(--border); }
 .key-badge { border: 1px solid var(--chip-border); border-radius: 3px; padding: 0 4px; font-size: 10px; font-weight: bold; color: var(--sub-text); line-height: 16px; }
 
-.blank { display: inline-flex; align-items: center; justify-content: center; font-weight: bold; min-width: 64px; height: 30px; padding: 0 12px; border-radius: 5px; box-sizing: border-box; cursor: grab; user-select: none; touch-action: none; }
+.blank { display: inline-flex; align-items: center; justify-content: center; font-weight: bold; min-width: 64px; height: 30px; padding: 0 12px; border-radius: 5px; box-sizing: border-box; cursor: grab; user-select: none; touch-action: none; transition: transform 0.12s ease-out; }
 /* 動かせないノードは React Flow がマウス操作を受け付けなくするので、空欄だけ受け付ける。 */
 .react-flow__node .blank { pointer-events: all; }
 .blank.empty { border: 1.5px dashed #9aa3b2; background: var(--bg); color: var(--primary); cursor: default; }
 .blank.filled { border: 1.5px solid var(--chip-border); background: #fff; color: var(--text); }
-.blank.over { border-color: var(--primary); background: #e8edfc; }
+/* 選択肢が重なった空欄は青くして少し大きくし、どこに落ちるかを分かりやすくする。 */
+.blank.over { border-color: var(--primary); background: #e8edfc; transform: scale(1.1); }
 .blank.dragging { opacity: 0.4; }
 
 .blank-result { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
