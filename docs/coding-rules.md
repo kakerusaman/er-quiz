@@ -41,7 +41,7 @@
 - SQL は文字列で書き、値は必ずプレースホルダ（`$1`）で渡す。値を文字列連結で SQL に入れない。
 - `QueryContext` などの `Context` 付きのメソッドを使い、リクエストの `ctx` を渡す。
 - 複数のテーブルをまとめて読む・書くときはトランザクションを使う。
-- テーブル定義を変えたら、`backend/db/schema.sql`、`docs/design/data.md` の DDL、必要なら `seed.sql` を同じ変更で直す。整合性はできるだけ DB の制約（外部キー、`UNIQUE`、`CHECK`）でも守る。
+- テーブル名・列名の決まりは「テーブル設計（PostgreSQL）」を見る。
 
 ### テスト
 
@@ -51,6 +51,38 @@
 - ヘルパーには `t.Helper()` を付ける。後片付けは `t.Cleanup` で書く。
 - 失敗メッセージは `got ..., want ...` の形にし、意図が分かりにくいときは日本語で補う（例: `want %+v（新しい問題が上）`）。
 - 正解が漏れていないことなど、守るべき約束はテストで確かめる（例: `TestGetQuestionHidesAnswers`）。
+
+## テーブル設計（PostgreSQL）
+
+### テーブル名
+
+- テーブル名は、マスタなら `m_`、トランザクションなら `t_` で始める。
+  - マスタ: 前もって登録しておき、アプリを使っても増えたり変わったりしないデータ。問題とその中身（ER図、選択肢、空欄と正解）。
+  - トランザクション: 利用者の操作のたびに増えていくデータ。解答の記録。
+  - どちらか迷うときは「解く人が操作したときに行が増えるか」で決め、PR に理由を書く。
+- 接頭辞のあとは英語の snake_case の複数形にする（例: `m_questions`、`t_attempt_answers`）。
+- 今のテーブルとの対応は次のとおり。
+
+| 区分 | 今の名前 | ルールに沿った名前 |
+| --- | --- | --- |
+| マスタ | questions | m_questions |
+| マスタ | entities | m_entities |
+| マスタ | attributes | m_attributes |
+| マスタ | relationships | m_relationships |
+| マスタ | choices | m_choices |
+| マスタ | blanks | m_blanks |
+| トランザクション | attempts | t_attempts |
+| トランザクション | attempt_answers | t_attempt_answers |
+
+### 列・制約
+
+- 列名は英語の snake_case。接頭辞は付けない。
+- 主キーは `id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY`。中間テーブルなど、行を特定するのに複数の列が要るときは複合主キーにしてよい（例: `t_attempt_answers` の `(attempt_id, blank_id)`）。
+- 外部キーの列は、参照先テーブルの単数形 + `_id`（接頭辞は除く）にする（例: `m_questions` を参照するなら `question_id`）。同じテーブルを役割違いで参照するときは、前に役割を付ける（`from_entity_id`、`answer_choice_id`）。
+- 真偽値の列は `is_` で始める（`is_pk`、`is_correct`）。表示順は `position`、作成日時は `created_at timestamptz NOT NULL DEFAULT now()`。
+- 列は原則 `NOT NULL`。値がないことに意味があるときだけ NULL を許し、その意味をコメントか `docs/design/data.md` に書く。
+- 守るべき整合性は、アプリだけでなく制約（外部キー、`UNIQUE`、`CHECK`）でも守る。制約の意図が名前から読み取れないときは、DDL にコメントを書く。
+- テーブルや列を変えたら、`backend/db/schema.sql`、`docs/design/data.md`（テーブル一覧・列・DDL）、必要なら `seed.sql` と Go の SQL を同じ変更で直す。
 
 ## TypeScript / React（`frontend/`）
 
