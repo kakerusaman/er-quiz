@@ -1,19 +1,17 @@
 import {
-  closestCenter,
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  pointerWithin,
   useSensor,
   useSensors,
-  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
 import { applyDrop, availableChoices, type DragSource } from "../answers";
 import { fetchQuestion, submitAnswers } from "../api";
+import { collisionDetection } from "../collision";
 import { ChoicePanel } from "../components/ChoicePanel";
 import { ErDiagram } from "../components/ErDiagram";
 import { Header } from "../components/Header";
@@ -21,10 +19,6 @@ import { LoadError } from "../components/LoadError";
 import { ScenarioPanel } from "../components/ScenarioPanel";
 import { navigate } from "../router";
 import type { Answers, AttemptResult, Question } from "../types";
-
-// マウスでは指している空欄に落とす。キーボード操作では一番近い空欄に落とす。
-const collisionDetection: CollisionDetection = (args) =>
-  args.pointerCoordinates ? pointerWithin(args) : closestCenter(args);
 
 // 問題画面（/questions/{id}）。上から業務の説明文、ER図、解答群（答え合わせ後は点数と解説）。
 export function QuestionPage({ id }: { id: number }) {
