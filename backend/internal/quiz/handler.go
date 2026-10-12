@@ -1,88 +1,89 @@
 package quiz
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 // NewHandler は /api 以下のルートを持つ http.Handler を返す。
+// 認証などのミドルウェアは api グループに付ける。
 func NewHandler(s Store) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery())
+	// メソッド違いは 404 ではなく 405 を返す（net/http の ServeMux と同じ振る舞い）。
+	r.HandleMethodNotAllowed = true
+
+	api := r.Group("/api")
+	api.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-	mux.HandleFunc("GET /api/questions", func(w http.ResponseWriter, r *http.Request) {
-		list, err := s.List(r.Context())
+	api.GET("/questions", func(c *gin.Context) {
+		list, err := s.List(c.Request.Context())
 		if err != nil {
-			writeError(w, err)
+			writeError(c, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, list)
+		c.JSON(http.StatusOK, list)
 	})
-	mux.HandleFunc("GET /api/questions/{id}", func(w http.ResponseWriter, r *http.Request) {
-		q, ok := getQuestion(w, r, s)
+	api.GET("/questions/:id", func(c *gin.Context) {
+		q, ok := getQuestion(c, s)
 		if !ok {
 			return
 		}
-		writeJSON(w, http.StatusOK, q.Public())
+		c.JSON(http.StatusOK, q.Public())
 	})
-	mux.HandleFunc("POST /api/questions/{id}/attempts", func(w http.ResponseWriter, r *http.Request) {
-		q, ok := getQuestion(w, r, s)
+	api.POST("/questions/:id/attempts", func(c *gin.Context) {
+		q, ok := getQuestion(c, s)
 		if !ok {
 			return
 		}
 		var body struct {
 			Answers map[int64]int64 `json:"answers"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 			return
 		}
 		if err := q.Validate(body.Answers); err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		result := q.Grade(body.Answers)
-		id, err := s.SaveAttempt(r.Context(), Attempt{QuestionID: q.ID, Answers: body.Answers, Result: result})
+		id, err := s.SaveAttempt(c.Request.Context(), Attempt{QuestionID: q.ID, Answers: body.Answers, Result: result})
 		if err != nil {
-			writeError(w, err)
+			writeError(c, err)
 			return
 		}
 		result.AttemptID = id
-		writeJSON(w, http.StatusOK, result)
+		c.JSON(http.StatusOK, result)
 	})
-	return mux
+	return r
 }
 
-// getQuestion はパスの {id} の問題を取得する。失敗したらエラーを書いて false を返す。
-func getQuestion(w http.ResponseWriter, r *http.Request, s Store) (QuestionData, bool) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+// getQuestion はパスの :id の問題を取得する。失敗したらエラーを書いて false を返す。
+func getQuestion(c *gin.Context, s Store) (QuestionData, bool) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		writeError(w, ErrNotFound)
+		writeError(c, ErrNotFound)
 		return QuestionData{}, false
 	}
-	q, err := s.Get(r.Context(), id)
+	q, err := s.Get(c.Request.Context(), id)
 	if err != nil {
-		writeError(w, err)
+		writeError(c, err)
 		return QuestionData{}, false
 	}
 	return q, true
 }
 
-func writeError(w http.ResponseWriter, err error) {
+func writeError(c *gin.Context, err error) {
 	if errors.Is(err, ErrNotFound) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": ErrNotFound.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": ErrNotFound.Error()})
 		return
 	}
 	log.Printf("internal error: %v", err)
-	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 }

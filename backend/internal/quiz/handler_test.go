@@ -7,7 +7,14 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
+
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.TestMode)
+	m.Run()
+}
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -98,6 +105,18 @@ func TestGetQuestionNotFound(t *testing.T) {
 		if status := getJSON(t, srv.URL+"/api/questions/"+id, nil); status != http.StatusNotFound {
 			t.Fatalf("id %s: status = %d", id, status)
 		}
+	}
+}
+
+func TestMethodNotAllowed(t *testing.T) {
+	srv := newTestServer(t)
+	res, err := http.Post(srv.URL+"/api/questions/1", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", res.StatusCode, http.StatusMethodNotAllowed)
 	}
 }
 
