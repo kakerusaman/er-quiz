@@ -140,6 +140,20 @@ describe("App", () => {
     expect(labels()).toEqual(["メールアドレス"]);
   });
 
+  it("選択肢をつかんで空欄に重ねると、その空欄が強調される", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    render(<App />);
+
+    const blank = await screen.findByLabelText("空欄 イ");
+    expect(blank).not.toHaveClass("over");
+    screen.getByRole("button", { name: "選択肢 メールアドレス" }).focus();
+    await userEvent.keyboard("[Space]");
+    await waitFor(() => expect(blank).toHaveClass("over"));
+    await userEvent.keyboard("[Escape]");
+    await waitFor(() => expect(blank).not.toHaveClass("over"));
+  });
+
   it("不正解と未回答には ✕ と正解を出し、[もう一度解く] で空欄が空に戻る", async () => {
     window.history.replaceState(null, "", "/questions/7");
     vi.stubGlobal("fetch", mockFetch());
