@@ -7,6 +7,7 @@
 - `backend/` Go のAPIサーバー。`cmd/server` が起動点、`internal/quiz` にモデル・保存・採点・HTTPハンドラ。
 - `frontend/` React + TypeScript（Vite）。`src/components` に ER 図の部品、`src/api.ts` が API 呼び出し、`src/types.ts` が API の型。
 - `docs/spec.md` 仕様。仕様を変えたらここも更新する。
+- `docs/coding-rules.md` コーディングルール。コードを書く前に読み、これに従う。
 
 ## コマンド
 
