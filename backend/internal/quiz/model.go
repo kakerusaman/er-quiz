@@ -107,7 +107,8 @@ func (d QuestionData) Summary() Summary {
 	return Summary{ID: d.ID, Title: d.Title, BlankCount: len(d.Answers)}
 }
 
-// ErrInvalidAnswer は回答にこの問題にない空欄ID・選択肢IDが含まれるときに返す。
+// ErrInvalidAnswer は回答にこの問題にない空欄ID・選択肢IDが含まれるとき、
+// または同じ選択肢を複数の空欄に使っているときに返す。
 var ErrInvalidAnswer = errors.New("invalid answer")
 
 // BlankResult は空欄1つ分の採点結果。AnswerChoiceID は正解の選択肢。
@@ -126,13 +127,19 @@ type Result struct {
 	Explanation string        `json:"explanation"`
 }
 
-// Validate は回答の空欄ID・選択肢IDがすべてこの問題のものか確かめる。
+// Validate は回答の空欄ID・選択肢IDがすべてこの問題のものか、
+// 同じ選択肢を複数の空欄に使っていないかを確かめる。
 func (d QuestionData) Validate(answers map[int64]int64) error {
 	choices := make(map[int64]bool, len(d.Choices))
 	for _, c := range d.Choices {
 		choices[c.ID] = true
 	}
+	used := make(map[int64]bool, len(answers))
 	for blankID, choiceID := range answers {
+		if used[choiceID] {
+			return fmt.Errorf("%w: choice %d is used more than once", ErrInvalidAnswer, choiceID)
+		}
+		used[choiceID] = true
 		if _, ok := d.Answers[blankID]; !ok {
 			return fmt.Errorf("%w: blank %d is not in question %d", ErrInvalidAnswer, blankID, d.ID)
 		}

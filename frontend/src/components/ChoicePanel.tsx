@@ -9,13 +9,13 @@ type Props = {
   children?: ReactNode;
 };
 
-// 画面下部の解答群。選択肢を API の順に並べ、空欄へドラッグできる。
+// 画面下部の解答群。空欄に置いていない選択肢を API の順に並べ、空欄へドラッグできる。
 export function ChoicePanel({ choices, children }: Props) {
   return (
     <section className="card choices" aria-labelledby="choices-title">
       <div className="choices-head">
         <h2 id="choices-title">解答群</h2>
-        <span className="hint">選択肢を空欄にドラッグして置きます。同じ選択肢は何度でも使えます。</span>
+        <span className="hint">選択肢を空欄にドラッグして置きます。置いた選択肢は解答群から消え、空欄から外すと戻ります。</span>
       </div>
       <ul className="choice-list">
         {choices.map((c) => (

@@ -121,6 +121,25 @@ describe("App", () => {
     expect(JSON.parse(post[1]!.body as string)).toEqual({ answers: { 10: 100 } });
   });
 
+  it("空欄に置いた選択肢は解答群から消え、入れ替えで外れると元の位置に戻る", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    const panel = screen.getByRole("region", { name: "解答群" });
+    const labels = () => within(panel).queryAllByRole("button", { name: /^選択肢/ }).map((b) => b.textContent);
+    expect(labels()).toEqual(["メールアドレス", "在庫数"]);
+
+    await dropChoice("メールアドレス");
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス"));
+    expect(labels()).toEqual(["在庫数"]);
+
+    await dropChoice("在庫数");
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("在庫数"));
+    expect(labels()).toEqual(["メールアドレス"]);
+  });
+
   it("不正解と未回答には ✕ と正解を出し、[もう一度解く] で空欄が空に戻る", async () => {
     window.history.replaceState(null, "", "/questions/7");
     vi.stubGlobal("fetch", mockFetch());
