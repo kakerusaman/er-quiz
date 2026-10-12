@@ -165,6 +165,7 @@ func TestPostAttemptErrors(t *testing.T) {
 		{"数字でない問題ID", "/api/questions/shop/attempts", `{"answers":{}}`, http.StatusNotFound},
 		{"他の問題の空欄", "/api/questions/1/attempts", `{"answers":{"4":1}}`, http.StatusBadRequest},
 		{"他の問題の選択肢", "/api/questions/1/attempts", `{"answers":{"1":99}}`, http.StatusBadRequest},
+		{"同じ選択肢を2つの空欄に使う", "/api/questions/1/attempts", `{"answers":{"1":1,"2":1}}`, http.StatusBadRequest},
 		{"壊れたJSON", "/api/questions/1/attempts", `{"answers":`, http.StatusBadRequest},
 		{"数字でない空欄ID", "/api/questions/1/attempts", `{"answers":{"ア":1}}`, http.StatusBadRequest},
 	}

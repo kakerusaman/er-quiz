@@ -12,7 +12,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
-import { applyDrop, type DragSource } from "../answers";
+import { applyDrop, availableChoices, type DragSource } from "../answers";
 import { fetchQuestion, submitAnswers } from "../api";
 import { ChoicePanel } from "../components/ChoicePanel";
 import { ErDiagram } from "../components/ErDiagram";
@@ -139,7 +139,7 @@ export function QuestionPage({ id }: { id: number }) {
                 </div>
               </section>
             ) : (
-              <ChoicePanel choices={question.choices}>
+              <ChoicePanel choices={availableChoices(question.choices, answers)}>
                 {submitError && (
                   <span className="error-text" role="alert">
                     送信に失敗しました。もう一度お試しください

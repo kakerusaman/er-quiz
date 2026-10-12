@@ -88,7 +88,7 @@
 | answer_choice_id | bigint | 正解の選択肢 |
 
 - entity_id と attribute_id は、どちらか一方だけが入る。
-- 同じ選択肢を複数の空欄の正解にできる（answer_choice_id は重複してよい）。
+- 1つの選択肢は1つの空欄にしか置けないため、同じ問題の中で answer_choice_id は重複させない（UNIQUE (question_id, answer_choice_id)）。
 
 ### attempts
 
@@ -173,6 +173,8 @@ CREATE TABLE blanks (
     attribute_id     bigint UNIQUE REFERENCES attributes (id) ON DELETE CASCADE,
     answer_choice_id bigint NOT NULL,
     UNIQUE (question_id, symbol),
+    -- 選択肢は1つの空欄にしか置けないので、正解の選択肢も問題の中で重複させない
+    UNIQUE (question_id, answer_choice_id),
     -- 正解の選択肢が同じ問題の解答群にあることを保証する
     FOREIGN KEY (question_id, answer_choice_id) REFERENCES choices (question_id, id),
     -- エンティティ名か属性名の、どちらか一方だけを隠す

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { applyDrop } from "./answers";
+import { applyDrop, availableChoices } from "./answers";
 
 describe("applyDrop", () => {
   it("解答群から空欄へ置く", () => {
     expect(applyDrop({}, { choiceId: 5 }, 1)).toEqual({ 1: 5 });
   });
 
-  it("同じ選択肢を何度でも使える", () => {
-    expect(applyDrop({ 1: 5 }, { choiceId: 5 }, 2)).toEqual({ 1: 5, 2: 5 });
+  it("同じ選択肢は1つの空欄にしか置けない（ほかの空欄にあれば外れる）", () => {
+    expect(applyDrop({ 1: 5 }, { choiceId: 5 }, 2)).toEqual({ 2: 5 });
   });
 
   it("選択肢が入った空欄へ別の選択肢を置くと入れ替わる", () => {
@@ -34,5 +34,18 @@ describe("applyDrop", () => {
   it("同じ空欄に落とし直しても変わらない", () => {
     const answers = { 1: 5 };
     expect(applyDrop(answers, { choiceId: 5, fromBlankId: 1 }, 1)).toBe(answers);
+  });
+});
+
+describe("availableChoices", () => {
+  const choices = [
+    { id: 5, label: "注文" },
+    { id: 6, label: "会員" },
+    { id: 7, label: "商品" },
+  ];
+
+  it("空欄に置いた選択肢を除き、元の順のまま返す", () => {
+    expect(availableChoices(choices, { 1: 6 }).map((c) => c.id)).toEqual([5, 7]);
+    expect(availableChoices(choices, {}).map((c) => c.id)).toEqual([5, 6, 7]);
   });
 });
