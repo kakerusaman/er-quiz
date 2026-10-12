@@ -3,7 +3,7 @@
 ER図の一部（テーブル名・カラム名など）が空欄になっていて、選択肢から埋めて答え合わせする学習用Webアプリです。
 
 - フロントエンド: React + TypeScript + Vite、ER図の描画に React Flow（`@xyflow/react`）
-- バックエンド: Go（標準ライブラリの `net/http`）、PostgreSQL（ドライバは `pgx`）
+- バックエンド: Go（ルーティングは Gin）、PostgreSQL（ドライバは `pgx`）
 
 ## 起動
 
