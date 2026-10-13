@@ -138,3 +138,37 @@ func TestPostgresSaveAttempt(t *testing.T) {
 		t.Fatalf("attempt_answers = %v, want %v", got, want)
 	}
 }
+
+func TestPostgresSaveAttemptUser(t *testing.T) {
+	s := newPostgresStore(t)
+	ctx := context.Background()
+	var userID int64
+	if err := s.db.QueryRowContext(ctx,
+		`INSERT INTO t_users (login_id, email, password_hash) VALUES ('taro', 'taro@example.com', 'x') RETURNING id`,
+	).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	q, err := s.Get(ctx, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := q.Grade(map[int64]int64{})
+	withUser, err := s.SaveAttempt(ctx, Attempt{QuestionID: 1, UserID: &userID, Answers: map[int64]int64{}, Result: result})
+	if err != nil {
+		t.Fatal(err)
+	}
+	anonymous, err := s.SaveAttempt(ctx, Attempt{QuestionID: 1, Answers: map[int64]int64{}, Result: result})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for id, want := range map[int64]sql.NullInt64{withUser: {Int64: userID, Valid: true}, anonymous: {}} {
+		var got sql.NullInt64
+		if err := s.db.QueryRowContext(ctx, `SELECT user_id FROM attempts WHERE id = $1`, id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Fatalf("attempt %d: user_id = %v, want %v", id, got, want)
+		}
+	}
+}

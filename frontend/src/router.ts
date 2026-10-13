@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-// 画面は2つだけなので、ルーティングのライブラリは入れずに History API で URL を切り替える。
+// 画面は少ないので、ルーティングのライブラリは入れずに History API で URL を切り替える。
 
 function subscribe(onChange: () => void) {
   window.addEventListener("popstate", onChange);

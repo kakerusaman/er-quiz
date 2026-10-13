@@ -260,11 +260,15 @@ describe("App", () => {
   });
 
   it("一覧の取得に失敗したら [再読み込み] でやり直せる", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(null, { status: 500 }))
-      .mockResolvedValue(Response.json(summaries));
-    vi.stubGlobal("fetch", fetch);
+    let listCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url !== "/api/questions") return Response.json({ error: "login required" }, { status: 401 });
+        listCalls++;
+        return listCalls === 1 ? new Response(null, { status: 500 }) : Response.json(summaries);
+      }),
+    );
     render(<App />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("問題を読み込めませんでした");
