@@ -195,6 +195,42 @@ describe("App", () => {
     expect(window.location.pathname).toBe("/");
   });
 
+  it("空欄を埋めてからヘッダーの [ログイン] を押すと確認を出し、OKならログイン画面へ移る", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    const login = await screen.findByRole("button", { name: "ログイン" });
+    await dropChoice("メールアドレス");
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス"));
+
+    await userEvent.click(login);
+    expect(confirm).toHaveBeenCalledWith("解答が消えますがよいですか？");
+    expect(window.location.pathname).toBe("/questions/7");
+    expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス");
+
+    confirm.mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: "新規登録" }));
+    expect(window.location.pathname).toBe("/signup");
+    expect(window.location.search).toBe("?next=%2Fquestions%2F7");
+  });
+
+  it("空欄を埋めていなければ、ヘッダーの [ログイン] は確認を出さない", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    await userEvent.click(await screen.findByRole("button", { name: "ログイン" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/login");
+  });
+
   it("答え合わせ後の [一覧へ戻る] は確認を出さない", async () => {
     window.history.replaceState(null, "", "/questions/7");
     vi.stubGlobal("fetch", mockFetch());

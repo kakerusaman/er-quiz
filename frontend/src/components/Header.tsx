@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useAuth } from "../auth";
-import { navigate } from "../router";
+import { confirmLeave, navigate } from "../router";
 
 type Props = {
   children?: ReactNode;
@@ -37,14 +37,16 @@ function UserMenu() {
   if (user === undefined) return null;
 
   if (user === null) {
-    // ログイン・登録の後に、今の画面へ戻れるようにする。
-    const next = `?next=${encodeURIComponent(window.location.pathname)}`;
+    // ログイン・登録の後に、今の画面へ戻れるようにする。解答中なら移る前に確認する。
+    const go = (path: string) => {
+      if (confirmLeave()) navigate(`${path}?next=${encodeURIComponent(window.location.pathname)}`);
+    };
     return (
       <nav className="user-menu" aria-label="アカウント">
-        <button className="link" onClick={() => navigate(`/login${next}`)}>
+        <button className="link" onClick={() => go("/login")}>
           ログイン
         </button>
-        <button className="secondary small" onClick={() => navigate(`/signup${next}`)}>
+        <button className="secondary small" onClick={() => go("/signup")}>
           新規登録
         </button>
       </nav>

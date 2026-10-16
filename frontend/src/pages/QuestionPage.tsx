@@ -17,7 +17,7 @@ import { ErDiagram } from "../components/ErDiagram";
 import { Header } from "../components/Header";
 import { LoadError } from "../components/LoadError";
 import { ScenarioPanel } from "../components/ScenarioPanel";
-import { navigate } from "../router";
+import { confirmLeave, navigate, useLeaveGuard } from "../router";
 import type { Answers, AttemptResult, Question } from "../types";
 
 // 問題画面（/questions/{id}）。上から業務の説明文、ER図、解答群（答え合わせ後は点数と解説）。
@@ -80,11 +80,10 @@ export function QuestionPage({ id }: { id: number }) {
     setResult(undefined);
   };
 
-  // 解答中に空欄を埋めていたら、一覧へ戻る前に確認する。
+  // 解答中に空欄を埋めていたら、一覧へ戻る・ログインへ移る前に確認する。
+  useLeaveGuard(!result && Object.keys(answers).length > 0);
   const leave = () => {
-    const filled = !result && Object.keys(answers).length > 0;
-    if (filled && !window.confirm("解答が消えますがよいですか？")) return;
-    navigate("/");
+    if (confirmLeave()) navigate("/");
   };
 
   if (failed) return <LoadError actionLabel="一覧へ戻る" onAction={() => navigate("/")} />;
