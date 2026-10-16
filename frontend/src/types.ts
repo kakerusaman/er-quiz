@@ -1,4 +1,4 @@
-// バックエンド（backend/internal/quiz/model.go）の JSON と対応する型。
+// バックエンド（backend/internal/quiz/model.go、backend/internal/auth/user.go）の JSON と対応する型。
 
 export type BlankRef = { id: number; symbol: string };
 
@@ -62,3 +62,6 @@ export type AttemptResult = {
   results: BlankResult[];
   explanation: string;
 };
+
+/** ログインしているユーザー */
+export type User = { id: number; loginId: string; email: string };

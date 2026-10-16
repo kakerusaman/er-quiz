@@ -195,6 +195,42 @@ describe("App", () => {
     expect(window.location.pathname).toBe("/");
   });
 
+  it("空欄を埋めてからヘッダーの [ログイン] を押すと確認を出し、OKならログイン画面へ移る", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    const login = await screen.findByRole("button", { name: "ログイン" });
+    await dropChoice("メールアドレス");
+    await waitFor(() => expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス"));
+
+    await userEvent.click(login);
+    expect(confirm).toHaveBeenCalledWith("解答が消えますがよいですか？");
+    expect(window.location.pathname).toBe("/questions/7");
+    expect(screen.getByLabelText("空欄 イ")).toHaveTextContent("メールアドレス");
+
+    confirm.mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: "新規登録" }));
+    expect(window.location.pathname).toBe("/signup");
+    expect(window.location.search).toBe("?next=%2Fquestions%2F7");
+  });
+
+  it("空欄を埋めていなければ、ヘッダーの [ログイン] は確認を出さない", async () => {
+    window.history.replaceState(null, "", "/questions/7");
+    vi.stubGlobal("fetch", mockFetch());
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
+    render(<App />);
+
+    await screen.findByLabelText("空欄 イ");
+    await userEvent.click(await screen.findByRole("button", { name: "ログイン" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/login");
+  });
+
   it("答え合わせ後の [一覧へ戻る] は確認を出さない", async () => {
     window.history.replaceState(null, "", "/questions/7");
     vi.stubGlobal("fetch", mockFetch());
@@ -260,11 +296,15 @@ describe("App", () => {
   });
 
   it("一覧の取得に失敗したら [再読み込み] でやり直せる", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(null, { status: 500 }))
-      .mockResolvedValue(Response.json(summaries));
-    vi.stubGlobal("fetch", fetch);
+    let listCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url !== "/api/questions") return Response.json({ error: "login required" }, { status: 401 });
+        listCalls++;
+        return listCalls === 1 ? new Response(null, { status: 500 }) : Response.json(summaries);
+      }),
+    );
     render(<App />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("問題を読み込めませんでした");

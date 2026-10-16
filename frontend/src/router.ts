@@ -1,6 +1,6 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
-// 画面は2つだけなので、ルーティングのライブラリは入れずに History API で URL を切り替える。
+// 画面は少ないので、ルーティングのライブラリは入れずに History API で URL を切り替える。
 
 function subscribe(onChange: () => void) {
   window.addEventListener("popstate", onChange);
@@ -23,4 +23,22 @@ export function navigate(path: string) {
 export function questionIdFromPath(path: string): number | undefined {
   const m = /^\/questions\/(\d+)\/?$/.exec(path);
   return m ? Number(m[1]) : undefined;
+}
+
+// 画面を離れると消える入力があるか。ヘッダーなど、その画面の外から移るときにも確認できるようにする。
+let unsaved = false;
+
+/** active の間、confirmLeave で確認を出すようにする（解答中に空欄を埋めているときなど）。 */
+export function useLeaveGuard(active: boolean) {
+  useEffect(() => {
+    unsaved = active;
+    return () => {
+      unsaved = false;
+    };
+  }, [active]);
+}
+
+/** 消える入力があれば確認を出し、移ってよいかを返す。 */
+export function confirmLeave(): boolean {
+  return !unsaved || window.confirm("解答が消えますがよいですか？");
 }

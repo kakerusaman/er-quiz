@@ -1,7 +1,7 @@
 -- PostgreSQL のテーブル定義。docs/design/data.md の DDL と同じ内容。
 -- 開発用: 実行すると既存のテーブルとデータを消して作り直す。
 
-DROP TABLE IF EXISTS attempt_answers, attempts, blanks, choices, relationships, attributes, entities, questions CASCADE;
+DROP TABLE IF EXISTS attempt_answers, attempts, t_users, blanks, choices, relationships, attributes, entities, questions CASCADE;
 
 CREATE TABLE questions (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -68,9 +68,21 @@ CREATE TABLE blanks (
     CHECK (num_nonnulls(entity_id, attribute_id) = 1)
 );
 
+-- ログインID・メールアドレスは小文字にそろえて保存する（大文字と小文字を区別しない）。
+-- 重複のエラーを見分けるため、UNIQUE 制約の名前（t_users_login_id_key、t_users_email_key）を Go のコードで使っている。
+CREATE TABLE t_users (
+    id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    login_id      text        NOT NULL UNIQUE CHECK (login_id ~ '^[a-z0-9_]{3,20}$'),
+    email         text        NOT NULL UNIQUE CHECK (email = lower(email)),
+    password_hash text        NOT NULL,
+    created_at    timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE attempts (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     question_id bigint      NOT NULL REFERENCES questions (id) ON DELETE CASCADE,
+    -- 解いた人。未ログインなら NULL。
+    user_id     bigint      REFERENCES t_users (id) ON DELETE SET NULL,
     score       integer     NOT NULL CHECK (score >= 0),
     total       integer     NOT NULL CHECK (total >= score),
     created_at  timestamptz NOT NULL DEFAULT now()

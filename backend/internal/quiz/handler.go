@@ -7,17 +7,13 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/kakerusaman/er-quiz/backend/internal/auth"
 )
 
-// NewHandler は /api 以下のルートを持つ http.Handler を返す。
-// 認証などのミドルウェアは api グループに付ける。
-func NewHandler(s Store) http.Handler {
-	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
-	// メソッド違いは 404 ではなく 405 を返す（net/http の ServeMux と同じ振る舞い）。
-	r.HandleMethodNotAllowed = true
-
-	api := r.Group("/api")
+// Register は api グループに問題の一覧・取得・解答のルートを登録する。
+// 解答はログインなしでもできる。ログイン中なら auth.Handler.LoadUser が読んだユーザーを記録する。
+func Register(api *gin.RouterGroup, s Store) {
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
@@ -53,7 +49,11 @@ func NewHandler(s Store) http.Handler {
 			return
 		}
 		result := q.Grade(body.Answers)
-		id, err := s.SaveAttempt(c.Request.Context(), Attempt{QuestionID: q.ID, Answers: body.Answers, Result: result})
+		a := Attempt{QuestionID: q.ID, Answers: body.Answers, Result: result}
+		if u, ok := auth.CurrentUser(c); ok {
+			a.UserID = &u.ID
+		}
+		id, err := s.SaveAttempt(c.Request.Context(), a)
 		if err != nil {
 			writeError(c, err)
 			return
@@ -61,7 +61,6 @@ func NewHandler(s Store) http.Handler {
 		result.AttemptID = id
 		c.JSON(http.StatusOK, result)
 	})
-	return r
 }
 
 // getQuestion はパスの :id の問題を取得する。失敗したらエラーを書いて false を返す。

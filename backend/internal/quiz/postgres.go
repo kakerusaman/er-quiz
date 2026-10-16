@@ -166,8 +166,8 @@ func (s *PostgresStore) SaveAttempt(ctx context.Context, a Attempt) (id int64, e
 	}()
 
 	if err := tx.QueryRowContext(ctx,
-		`INSERT INTO attempts (question_id, score, total) VALUES ($1, $2, $3) RETURNING id`,
-		a.QuestionID, a.Result.Score, a.Result.Total,
+		`INSERT INTO attempts (question_id, user_id, score, total) VALUES ($1, $2, $3, $4) RETURNING id`,
+		a.QuestionID, a.UserID, a.Result.Score, a.Result.Total,
 	).Scan(&id); err != nil {
 		return 0, fmt.Errorf("save attempt: %w", err)
 	}

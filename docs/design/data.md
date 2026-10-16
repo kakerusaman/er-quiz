@@ -1,6 +1,6 @@
 # データ設計
 
-[仕様](../spec.md) をもとにした PostgreSQL のテーブル設計です。MVP の範囲を対象にしています。
+[仕様](../spec.md) をもとにした PostgreSQL のテーブル設計です。MVP とログインの範囲を対象にしています。ログインのセッションは Redis に持ちます（最後の「セッション（Redis）」）。
 
 ## テーブル一覧
 
@@ -12,7 +12,8 @@
 | relationships | エンティティ間のリレーションシップ（両端の多重度） |
 | choices | 解答群の選択肢 |
 | blanks | 空欄（どの名前を隠すか、正解の選択肢） |
-| attempts | 解答1回分（どの問題を、いつ、何点で解いたか） |
+| t_users | ユーザー（ログインID、メールアドレス、パスワードのハッシュ） |
+| attempts | 解答1回分（どの問題を、誰が、いつ、何点で解いたか） |
 | attempt_answers | 解答の空欄ごとの中身（どの選択肢を置いて、正解だったか） |
 
 ## 各テーブルの列
@@ -90,17 +91,31 @@
 - entity_id と attribute_id は、どちらか一方だけが入る。
 - 1つの選択肢は1つの空欄にしか置けないため、同じ問題の中で answer_choice_id は重複させない（UNIQUE (question_id, answer_choice_id)）。
 
+### t_users
+
+| 列 | 型 | 内容 |
+| --- | --- | --- |
+| id | bigint | 主キー |
+| login_id | text | ログインID。半角英小文字・数字・`_` の3〜20文字。UNIQUE |
+| email | text | メールアドレス。小文字にそろえて保存する。UNIQUE |
+| password_hash | text | パスワードの bcrypt ハッシュ |
+| created_at | timestamptz | 登録日時 |
+
+- 登録のたびに行が増えるので、トランザクションとして `t_` を付けた（コーディングルールの「解く人が操作したときに行が増えるか」）。
+- ログインIDとメールアドレスは大文字と小文字を区別しないので、小文字にそろえて保存する。
+
 ### attempts
 
 | 列 | 型 | 内容 |
 | --- | --- | --- |
 | id | bigint | 主キー |
 | question_id | bigint | 問題 |
+| user_id | bigint | 解いた人（t_users への外部キー）。未ログインは NULL |
 | score | integer | 正解した空欄の数 |
 | total | integer | 空欄の数 |
 | created_at | timestamptz | 解答日時 |
 
-ログインしていない人の解答も記録する。ログイン機能を作るときに user_id 列（未ログインは NULL）を追加する。
+ログインしていない人の解答も記録する（user_id は NULL）。ユーザーを消しても解答は残し、user_id を NULL にする。
 
 ### attempt_answers
 
@@ -181,9 +196,21 @@ CREATE TABLE blanks (
     CHECK (num_nonnulls(entity_id, attribute_id) = 1)
 );
 
+-- ログインID・メールアドレスは小文字にそろえて保存する（大文字と小文字を区別しない）。
+-- 重複のエラーを見分けるため、UNIQUE 制約の名前（t_users_login_id_key、t_users_email_key）を Go のコードで使っている。
+CREATE TABLE t_users (
+    id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    login_id      text        NOT NULL UNIQUE CHECK (login_id ~ '^[a-z0-9_]{3,20}$'),
+    email         text        NOT NULL UNIQUE CHECK (email = lower(email)),
+    password_hash text        NOT NULL,
+    created_at    timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE attempts (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     question_id bigint      NOT NULL REFERENCES questions (id) ON DELETE CASCADE,
+    -- 解いた人。未ログインなら NULL。
+    user_id     bigint      REFERENCES t_users (id) ON DELETE SET NULL,
     score       integer     NOT NULL CHECK (score >= 0),
     total       integer     NOT NULL CHECK (total >= score),
     created_at  timestamptz NOT NULL DEFAULT now()
@@ -203,3 +230,15 @@ CREATE TABLE attempt_answers (
 - 難易度（MVPの次）は attempt_answers から問題ごと・空欄ごとの正答率を集計して出す。
 - 将来、主キー・外部キーやリレーションシップの線を空欄にするときは、blanks に参照先の列を足し、CHECK 制約を広げて対応する。
 - 将来の関係スキーマ・SQL・正規化の問題は、questions に問題の種類を表す列を足して対応する。
+
+## セッション（Redis）
+
+ログイン中であることは、PostgreSQL ではなく Redis に持つ。
+
+| キー | 値 | 有効期限 |
+| --- | --- | --- |
+| `session:<トークンの SHA-256（16進）>` | ユーザーID | 30日（TTL） |
+
+- トークンはログインのたびに作るランダムな32バイトで、Cookie（`session`）でブラウザに渡す。Redis にはハッシュだけを置くので、中身が漏れてもそのままログインには使えない。
+- 期限が来ると Redis が消す。ログアウトではキーを消す。
+- `REDIS_URL` が未設定のときは、サーバーのメモリに同じ形で持つ（再起動するとログアウトされる）。

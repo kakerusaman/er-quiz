@@ -4,7 +4,7 @@
 
 ## 構成
 
-- `backend/` Go のAPIサーバー。`cmd/server` が起動点、`internal/quiz` にモデル・保存・採点・HTTPハンドラ。
+- `backend/` Go のAPIサーバー。`cmd/server` が起動点、`internal/server` がルートとミドルウェアをまとめる。`internal/quiz` に問題のモデル・保存・採点・HTTPハンドラ、`internal/auth` にユーザー・セッション・ログインのHTTPハンドラ。
 - `frontend/` React + TypeScript（Vite）。`src/components` に ER 図の部品、`src/api.ts` が API 呼び出し、`src/types.ts` が API の型。
 - `docs/spec.md` 仕様。仕様を変えたらここも更新する。
 - `docs/coding-rules.md` コーディングルール。コードを書く前に読み、これに従う。
@@ -20,7 +20,7 @@
 - 変更は1機能ずつ。最初に計画を出し、承認されてから実装する。
 - 振る舞いを変えたらテストを足す（Go は `httptest`、フロントは Vitest + Testing Library）。
 - 正解（`Blank.Answer`）は API レスポンスに含めない。採点は必ずサーバー側で行う。
-- `backend/internal/quiz/model.go` の JSON と `frontend/src/types.ts` は手で揃えている。片方を変えたらもう片方も直す。
+- `backend/internal/quiz/model.go`・`backend/internal/auth/user.go` の JSON と `frontend/src/types.ts` は手で揃えている。片方を変えたらもう片方も直す。
 - React Flow のノードは `useNodesState` で持つ（毎回作り直すと計測済みサイズが消えてノードが表示されない）。
 - Go は標準ライブラリ優先（例外: HTTP のルーティングとミドルウェアは Gin）。依存を足すときは理由を PR に書く。
 - コミット前に上のコマンドがすべて通ることを確認する。

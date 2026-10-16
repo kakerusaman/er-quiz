@@ -20,9 +20,20 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       # PostgreSQL の統合テスト（postgres_test.go）を動かす
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+      # Redis の統合テスト（auth/session_test.go）を動かす
+      REDIS_URL: redis://localhost:6379/0
     defaults:
       run:
         working-directory: backend
