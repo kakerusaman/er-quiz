@@ -18,7 +18,7 @@
 
 - 整形は `gofmt`、チェックは `go vet ./...`。どちらも通らないコードはコミットしない。
 - 標準ライブラリを優先する。例外として HTTP は Gin を使う（認証・認可などのミドルウェアを `/api` グループに付けるため）。ルートは `api.GET("/questions/:id", ...)` の形で書き、パスの値は `c.Param("id")`、JSON は `c.ShouldBindJSON` と `c.JSON` で扱う。メソッド違いは 405 を返す（`HandleMethodNotAllowed = true`）、DB は `database/sql` + `pgx` ドライバ。依存を足すときは理由を PR に書く。
-- パッケージは機能単位でまとめる（今は `internal/quiz` に、モデル・保存・採点・ハンドラ）。外から使わせないものは `internal/` に置く。
+- パッケージは機能単位でまとめる（`internal/quiz` に問題のモデル・保存・採点・ハンドラ、`internal/auth` にユーザー・セッション・ログインのハンドラ）。ルートとミドルウェアの組み立ては `internal/server` だけで行い、各パッケージは `Register(api *gin.RouterGroup, ...)` でルートを登録する。外から使わせないものは `internal/` に置く。
 - 公開する型・関数・変数には、名前で始まる日本語のドキュメントコメントを付ける（例: `// Grade は空欄ID → 選択肢ID の回答を採点する。`）。パッケージには `// Package quiz は…` を書く。
 - コンストラクタは `NewXxx`。インターフェースは使う側に置き、小さく保つ（例: `Store`）。
 
@@ -46,8 +46,8 @@
 ### テスト
 
 - テストはテスト対象と同じパッケージに `xxx_test.go` で置く。
-- HTTP の振る舞いは `httptest.NewServer(NewHandler(NewMemoryStore(...)))` で、API を外から呼んでテストする。`TestMain` で `gin.SetMode(gin.TestMode)` にしておく。
-- PostgreSQL のテストは `DATABASE_URL` があるときだけ動かし、なければ `t.Skip` する。使い捨てのスキーマを作って `t.Cleanup` で消す。
+- HTTP の振る舞いは `httptest.NewServer(server.New(server.Config{...}))` にメモリ版の保存先（`quiz.NewMemoryStore`、`auth.NewMemoryUserStore`、`auth.NewMemorySessionStore`）を渡し、API を外から呼んでテストする。ログインが要るテストは `cookiejar` のクライアントを使う。`internal/server` を使うテストは `package quiz_test` のような外部テストパッケージに置く（import の循環を避けるため）。`TestMain` で `gin.SetMode(gin.TestMode)` にしておく。
+- PostgreSQL のテストは `DATABASE_URL` があるときだけ動かし、なければ `t.Skip` する。使い捨てのスキーマを作って `t.Cleanup` で消す。Redis のテストも同じく `REDIS_URL` があるときだけ動かす。
 - ヘルパーには `t.Helper()` を付ける。後片付けは `t.Cleanup` で書く。
 - 失敗メッセージは `got ..., want ...` の形にし、意図が分かりにくいときは日本語で補う（例: `want %+v（新しい問題が上）`）。
 - 正解が漏れていないことなど、守るべき約束はテストで確かめる（例: `TestGetQuestionHidesAnswers`）。
@@ -99,7 +99,8 @@
 
 - `src/pages/` 画面単位のコンポーネント（`QuestionList`、`QuestionPage`）。データの取得と画面の状態はここで持つ。
 - `src/components/` 画面の部品。表示と、props で受けた値・コールバックを使う操作だけにする。
-- `src/api.ts` API 呼び出し。`fetch` はここ以外で直接使わない。
+- `src/api.ts` API 呼び出し。`fetch` はここ以外で直接使わない。API のエラーは `ApiError`（`status` と `{"error": ...}` の `code`）で投げる。
+- `src/auth.ts` ログイン状態（`AuthContext` と `useAuth`）。ログイン状態は `App` が持ち、画面と部品は `useAuth()` で読む。
 - `src/types.ts` API の型。`backend/internal/quiz/model.go` の JSON と手で揃える。
 - ロジック（回答の更新、当たり判定など）は React に依存しない関数として `src/xxx.ts` に切り出し、単体テストを書く（`answers.ts`、`collision.ts`）。
 

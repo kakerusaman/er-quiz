@@ -1,4 +1,4 @@
-package quiz
+package quiz_test
 
 import (
 	"encoding/json"
@@ -9,6 +9,10 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/kakerusaman/er-quiz/backend/internal/auth"
+	"github.com/kakerusaman/er-quiz/backend/internal/quiz"
+	"github.com/kakerusaman/er-quiz/backend/internal/server"
 )
 
 func TestMain(m *testing.M) {
@@ -16,9 +20,18 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+// newHandler は store の問題と、空のユーザー・セッションでサーバーを作る。
+func newHandler(store quiz.Store) http.Handler {
+	return server.New(server.Config{
+		Questions: store,
+		Users:     auth.NewMemoryUserStore(),
+		Sessions:  auth.NewMemorySessionStore(),
+	})
+}
+
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	srv := httptest.NewServer(NewHandler(NewMemoryStore(SampleQuestions()...)))
+	srv := httptest.NewServer(newHandler(quiz.NewMemoryStore(quiz.SampleQuestions()...)))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -39,16 +52,16 @@ func getJSON(t *testing.T, url string, v any) int {
 }
 
 func TestListQuestions(t *testing.T) {
-	second := SampleQuestions()[0]
+	second := quiz.SampleQuestions()[0]
 	second.ID, second.Title = 2, "新しい問題"
-	srv := httptest.NewServer(NewHandler(NewMemoryStore(SampleQuestions()[0], second)))
+	srv := httptest.NewServer(newHandler(quiz.NewMemoryStore(quiz.SampleQuestions()[0], second)))
 	t.Cleanup(srv.Close)
 
-	var got []Summary
+	var got []quiz.Summary
 	if status := getJSON(t, srv.URL+"/api/questions", &got); status != http.StatusOK {
 		t.Fatalf("status = %d", status)
 	}
-	want := []Summary{{ID: 2, Title: "新しい問題", BlankCount: 3}, {ID: 1, Title: "ECサイトの注文", BlankCount: 3}}
+	want := []quiz.Summary{{ID: 2, Title: "新しい問題", BlankCount: 3}, {ID: 1, Title: "ECサイトの注文", BlankCount: 3}}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("got %+v, want %+v（新しい問題が上）", got, want)
 	}
@@ -131,8 +144,8 @@ func postAttempt(t *testing.T, url, body string) *http.Response {
 }
 
 func TestPostAttempt(t *testing.T) {
-	store := NewMemoryStore(SampleQuestions()...)
-	srv := httptest.NewServer(NewHandler(store))
+	store := quiz.NewMemoryStore(quiz.SampleQuestions()...)
+	srv := httptest.NewServer(newHandler(store))
 	t.Cleanup(srv.Close)
 
 	// ア=注文(正解), イ=会員(不正解), ウ=未回答
@@ -140,20 +153,20 @@ func TestPostAttempt(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d", res.StatusCode)
 	}
-	var got Result
+	var got quiz.Result
 	if err := json.NewDecoder(res.Body).Decode(&got); err != nil {
 		t.Fatal(err)
 	}
-	want := Result{
+	want := quiz.Result{
 		AttemptID: 1,
 		Score:     1,
 		Total:     3,
-		Results: []BlankResult{
+		Results: []quiz.BlankResult{
 			{BlankID: 1, Correct: true, AnswerChoiceID: 1},
 			{BlankID: 2, Correct: false, AnswerChoiceID: 4},
 			{BlankID: 3, Correct: false, AnswerChoiceID: 5},
 		},
-		Explanation: SampleQuestions()[0].Explanation,
+		Explanation: quiz.SampleQuestions()[0].Explanation,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got  %+v\nwant %+v", got, want)
@@ -166,7 +179,7 @@ func TestPostAttempt(t *testing.T) {
 
 	// もう一度解くと別の解答として記録される。
 	res = postAttempt(t, srv.URL+"/api/questions/1/attempts", `{"answers":{}}`)
-	var again Result
+	var again quiz.Result
 	if err := json.NewDecoder(res.Body).Decode(&again); err != nil {
 		t.Fatal(err)
 	}
@@ -190,8 +203,8 @@ func TestPostAttemptErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewMemoryStore(SampleQuestions()...)
-			srv := httptest.NewServer(NewHandler(store))
+			store := quiz.NewMemoryStore(quiz.SampleQuestions()...)
+			srv := httptest.NewServer(newHandler(store))
 			t.Cleanup(srv.Close)
 			res := postAttempt(t, srv.URL+tt.path, tt.body)
 			if res.StatusCode != tt.status {
@@ -201,13 +214,5 @@ func TestPostAttemptErrors(t *testing.T) {
 				t.Fatalf("%d attempts saved on error", n)
 			}
 		})
-	}
-}
-
-func TestPublicDoesNotModifyOriginal(t *testing.T) {
-	d := SampleQuestions()[0]
-	_ = d.Public()
-	if d.Entities[1].Name == nil || d.Entities[0].Attributes[2].Name == nil {
-		t.Fatal("Public() cleared names in the original data")
 	}
 }

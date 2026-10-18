@@ -20,8 +20,10 @@ type Store interface {
 }
 
 // Attempt は保存する解答1回分。Answers は空欄ID → 置いた選択肢ID（未回答の空欄はない）。
+// UserID は解いた人。未ログインなら nil。
 type Attempt struct {
 	QuestionID int64
+	UserID     *int64
 	Answers    map[int64]int64
 	Result     Result
 }

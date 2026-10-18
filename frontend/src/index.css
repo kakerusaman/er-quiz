@@ -101,3 +101,17 @@ button.link.small { font-size: 13px; }
 .explanation p { margin: 12px 0 0; line-height: 1.9; font-size: 15px; }
 button.secondary { background: #fff; color: var(--primary); font-weight: bold; border: 1.5px solid var(--primary); border-radius: 6px; padding: 10px 24px; }
 .error-text { color: var(--wrong); }
+
+/* ログイン状態・ログイン画面 */
+.user-menu { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 14px; }
+.login-id { font-weight: bold; }
+button.secondary.small { padding: 6px 14px; }
+.auth-card { max-width: 400px; margin: 48px auto 0; padding: 28px 32px; }
+.auth-card h1 { font-size: 20px; margin: 0 0 20px; }
+.auth-card form { display: flex; flex-direction: column; gap: 16px; }
+.auth-card label { display: flex; flex-direction: column; gap: 6px; font-weight: bold; font-size: 14px; }
+.auth-card input { font: inherit; font-weight: normal; padding: 10px 12px; border: 1.5px solid var(--chip-border); border-radius: 6px; }
+.auth-card input:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: var(--primary); }
+.auth-card .hint { font-weight: normal; font-size: 12px; }
+.auth-card .error-text { margin: 0; font-size: 14px; }
+.auth-switch { margin: 20px 0 0; font-size: 14px; color: var(--sub-text); }
